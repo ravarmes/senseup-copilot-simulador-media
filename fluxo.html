@@ -1,0 +1,955 @@
+<title>Broker do Hub Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,600;0,750;1,400&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --paper:#f5f7f6; --surface:#ffffff; --ink:#1c2330; --ink-2:#4a5566; --rule:#d9e0de;
+  --accent:#0d6770; --accent-soft:#e2f0f0; --amber:#9a5b0c; --amber-soft:#fbf0dc;
+  --crit:#a3322a; --crit-soft:#f8e3e0; --code-bg:#eef2f1;
+  --ok:#2f6f35; --ok-soft:#e3f0e2; --veu:rgba(16,24,30,.34);
+  --sans:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"Spline Sans Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#11161b; --surface:#182027; --ink:#e3e8ea; --ink-2:#9eabb6; --rule:#2a343d;
+    --accent:#5fbcc3; --accent-soft:#16333a; --amber:#e5ac56; --amber-soft:#3a2c14;
+    --crit:#f08b80; --crit-soft:#3d1f1c; --code-bg:#1d262e;
+    --ok:#8fcf8a; --ok-soft:#1d3320; --veu:rgba(0,0,0,.55);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#11161b; --surface:#182027; --ink:#e3e8ea; --ink-2:#9eabb6; --rule:#2a343d;
+  --accent:#5fbcc3; --accent-soft:#16333a; --amber:#e5ac56; --amber-soft:#3a2c14;
+  --crit:#f08b80; --crit-soft:#3d1f1c; --code-bg:#1d262e;
+  --ok:#8fcf8a; --ok-soft:#1d3320; --veu:rgba(0,0,0,.55);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+body{background:var(--paper);color:var(--ink);font:16px/1.6 var(--sans);padding-inline:16px;margin:0}
+a{color:var(--accent);text-underline-offset:2px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1060px;margin:0 auto;padding-block:28px 72px}
+
+/* cabecalho */
+header.top{display:grid;gap:12px;padding-bottom:22px;border-bottom:1px solid var(--rule)}
+.eyebrow{font:500 12px/1.3 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(28px,4vw,42px);line-height:1.1;font-weight:750;letter-spacing:-.02em;margin:0;text-wrap:balance}
+.lede{max-width:66ch;color:var(--ink-2);margin:0;font-size:17px}
+.legenda{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:13px;color:var(--ink-2)}
+.legenda .grupo{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.btn-link{font-size:14px;font-weight:600;text-decoration:none;border:1px solid var(--accent);padding:5px 12px;border-radius:999px;white-space:nowrap}
+.btn-link:hover{background:var(--accent-soft)}
+
+/* trilha de secoes */
+nav.trilha{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);border-bottom:1px solid var(--rule);margin-inline:-16px;padding:8px 16px;overflow-x:auto}
+nav.trilha ol{list-style:none;margin:0 auto;padding:0;display:flex;gap:4px;max-width:1060px}
+nav.trilha a{display:flex;gap:6px;align-items:baseline;white-space:nowrap;text-decoration:none;color:var(--ink-2);font-size:13.5px;padding:5px 10px;border-radius:999px}
+nav.trilha a .n{font:500 11.5px var(--mono);color:var(--accent)}
+nav.trilha a:hover{background:var(--accent-soft);color:var(--ink)}
+nav.trilha a.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+
+/* secoes */
+section.tela{padding-block:44px 8px;scroll-margin-top:52px}
+section.tela>h2{display:flex;gap:14px;align-items:baseline;font-size:clamp(23px,2.8vw,29px);line-height:1.2;font-weight:750;letter-spacing:-.015em;margin:0 0 10px;text-wrap:balance}
+section.tela>h2 .n{font:500 15px var(--mono);color:var(--accent)}
+.tese{font-size:18px;line-height:1.55;max-width:68ch;margin:0 0 18px}
+p{max-width:70ch}
+code{font:13px/1.4 var(--mono);background:var(--code-bg);padding:1px 5px;border-radius:3px}
+
+/* etiquetas de situacao */
+.st{font:500 11.5px/1.3 var(--mono);padding:1px 7px;border-radius:3px;white-space:nowrap;border:1px solid transparent;display:inline-block}
+.st-hoje{border-color:var(--ink-2);color:var(--ink)}
+.st-pronto{background:var(--ok-soft);color:var(--ok)}
+.st-proposta{background:var(--accent-soft);color:var(--accent)}
+.st-construir{background:var(--crit-soft);color:var(--crit)}
+.st-confirmar{background:var(--amber-soft);color:var(--amber)}
+.st-sim{border-color:var(--amber);border-style:dashed;color:var(--amber)}
+
+/* figuras */
+figure.fig{margin:8px 0 26px}
+.fig-caixa{overflow-x:auto;background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:14px}
+figure.fig svg{display:block;width:100%;min-width:720px;height:auto;font-family:var(--sans);color:var(--ink)}
+figure.fig figcaption{font-size:14px;line-height:1.5;color:var(--ink-2);margin-top:10px;max-width:74ch}
+svg text{fill:var(--ink)}
+svg .tm{fill:var(--ink-2)}
+svg .ta{fill:var(--accent)}
+svg .tc{fill:var(--crit)}
+svg .tk{fill:var(--ok)}
+svg .tb{fill:var(--amber)}
+svg .mono{font-family:var(--mono)}
+svg .b{font-weight:700}
+svg .rot{font:500 11.5px var(--mono);letter-spacing:.07em;text-transform:uppercase;fill:var(--ink-2)}
+svg .s11{font-size:11px} svg .s12{font-size:12px} svg .s13{font-size:13px}
+svg .bx{fill:var(--surface);stroke:var(--ink-2);stroke-width:1.2;stroke-opacity:.7}
+svg .bx-acc{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5}
+svg .bx-amb{fill:var(--amber-soft);stroke:var(--amber);stroke-width:1.4}
+svg .bx-crit{fill:var(--crit-soft);stroke:var(--crit);stroke-width:1.4}
+svg .bx-ok{fill:var(--ok-soft);stroke:var(--ok);stroke-width:1.4}
+svg .zona{fill:none;stroke:var(--rule);stroke-width:1.4;stroke-dasharray:5 4}
+svg .ln{stroke:var(--ink-2);stroke-width:1.5;fill:none}
+svg .ln-t{stroke:var(--amber);stroke-width:1.4;stroke-dasharray:4 3;fill:none}
+svg .seta{fill:var(--ink-2)}
+svg .grade{stroke:var(--rule);stroke-width:1}
+svg .mais circle{fill:var(--accent)}
+svg .mais path{stroke:var(--surface);stroke-width:2;stroke-linecap:round}
+svg .hot{cursor:pointer}
+svg .hot:hover rect:first-of-type,svg .hot:focus-visible rect:first-of-type{stroke:var(--accent);stroke-width:2.6}
+svg .hot:focus{outline:none}
+svg .hot:hover .mais circle{r:10.5}
+
+/* botoes de exemplo no texto */
+button.ver{font:600 13px var(--sans);color:var(--accent);background:var(--surface);border:1px solid var(--accent);border-radius:999px;padding:3px 11px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+button.ver:hover{background:var(--accent-soft)}
+button.ver::before{content:"+";display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:var(--accent);color:var(--surface);font:700 12px/1 var(--sans)}
+
+/* blocos de apoio */
+.pontos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:0 0 8px;padding:0;list-style:none}
+.pontos li{background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:14px 16px;font-size:15px;line-height:1.5}
+.pontos li b{display:block;margin-bottom:4px}
+.duas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.nota{border-left:3px solid var(--amber);background:var(--amber-soft);padding:10px 14px;border-radius:0 6px 6px 0;font-size:15px;max-width:74ch;margin:8px 0 18px}
+.nota b{color:var(--amber)}
+
+/* controle de leitura */
+.segmento{display:inline-flex;border:1px solid var(--rule);border-radius:999px;padding:3px;background:var(--surface);gap:2px;flex-wrap:wrap}
+.segmento button{font:600 13.5px var(--sans);border:0;background:none;color:var(--ink-2);padding:6px 14px;border-radius:999px;cursor:pointer}
+.segmento button[aria-pressed="true"]{background:var(--accent);color:var(--surface)}
+.placar{font-size:14.5px;color:var(--ink-2);margin:10px 0 12px;min-height:1.5em}
+.placar b{color:var(--ink)}
+svg .linha-meta{cursor:pointer}
+svg .linha-meta .fundo{fill:transparent}
+svg .linha-meta:hover .fundo,svg .linha-meta:focus-visible .fundo{fill:var(--accent-soft)}
+svg .linha-meta:focus{outline:none}
+svg .iv{stroke-linecap:round;stroke-width:9;stroke-opacity:.38}
+svg .iv.sim{stroke:var(--ok)} svg .iv.nao{stroke:var(--crit)}
+svg .pt{stroke:var(--surface);stroke-width:2.5}
+svg .pt.sim{fill:var(--ok)} svg .pt.nao{fill:var(--crit)}
+svg .alvo{stroke:var(--ink);stroke-width:2;stroke-dasharray:3 2}
+svg .chip.sim{fill:var(--ok-soft);stroke:var(--ok)} svg .chip.nao{fill:var(--crit-soft);stroke:var(--crit)}
+svg .barra{fill:var(--accent)}
+svg .barra-2{fill:var(--crit)}
+details.tabela{margin:4px 0 20px;font-size:14px}
+details.tabela summary{cursor:pointer;color:var(--accent);font-weight:600}
+
+/* tabelas */
+.tbl{overflow-x:auto;margin:10px 0 16px;border:1px solid var(--rule);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;line-height:1.45;font-variant-numeric:tabular-nums}
+th{text-align:left;font-weight:600;font-size:12.5px;color:var(--ink-2);background:var(--paper);border-bottom:1px solid var(--rule);padding:8px 11px;white-space:nowrap}
+td{padding:8px 11px;border-bottom:1px solid var(--rule);vertical-align:top}
+tr:last-child td{border-bottom:0}
+
+/* decisoes */
+ol.decisoes{counter-reset:d;list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 18px}
+ol.decisoes li{counter-increment:d;display:grid;grid-template-columns:34px 1fr;gap:4px;background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:12px 14px;font-size:15px;line-height:1.5}
+ol.decisoes li::before{content:counter(d);font:600 15px var(--mono);color:var(--accent)}
+ol.decisoes b{display:block}
+
+footer{margin-top:48px;border-top:1px solid var(--rule);padding-top:16px;font-size:13.5px;color:var(--ink-2);display:grid;gap:6px}
+
+/* painel de detalhe */
+#veu{position:fixed;inset:0;background:var(--veu);z-index:20}
+#painel{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--surface);border-left:1px solid var(--rule);box-shadow:-12px 0 32px rgba(0,0,0,.14);z-index:21;overflow-y:auto;padding:calc(env(safe-area-inset-top,0px) + 18px) 22px calc(env(safe-area-inset-bottom,0px) + 28px)}
+#painel .cab{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:1px solid var(--rule);padding-bottom:12px;margin-bottom:14px}
+#painel .cab .eyebrow{margin-bottom:4px}
+#painel h3{margin:0;font-size:21px;line-height:1.25;text-wrap:balance}
+#painel .fechar{font:600 13px var(--sans);border:1px solid var(--rule);background:var(--paper);color:var(--ink);border-radius:999px;padding:5px 12px;cursor:pointer;white-space:nowrap}
+#painel h4{font-size:15px;margin:18px 0 6px}
+#painel p,#painel li{font-size:15px;line-height:1.55}
+#painel ul{padding-left:1.2em}
+#painel pre{font:12.5px/1.5 var(--mono);background:var(--code-bg);border:1px solid var(--rule);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre;margin:10px 0}
+#painel .rode{font-size:13.5px;color:var(--ink-2)}
+#painel table{font-size:13.5px}
+/* tabela de campos do manifesto */
+table.campos td:first-child{width:42%}
+table.campos td:first-child code{font-weight:600;color:var(--accent);background:none;padding:0}
+table.campos .v{display:block;font:12px/1.45 var(--mono);color:var(--ink-2);margin-top:3px;word-break:break-word}
+table.campos .f{display:block;font-size:12px;color:var(--ink-2);margin-top:2px;font-style:italic}
+table.campos .op{display:block;font:11.5px/1.45 var(--mono);color:var(--ink-2);margin-top:5px}
+table.campos .p23{display:block;font-size:12.5px;margin-top:5px;padding:3px 7px;border-left:2px solid var(--accent);background:var(--accent-soft);border-radius:0 4px 4px 0}
+table.campos tr.grupo td{background:var(--paper);color:var(--accent);font:600 11.5px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:10px 11px 6px}
+table.campos .ver{margin-top:6px}
+
+@media (max-width:760px){
+  .pontos,.duas,ol.decisoes{grid-template-columns:minmax(0,1fr)}
+  .tese{font-size:16.5px}
+}
+/* especificos do broker */
+svg .est{cursor:pointer}
+svg .est:focus{outline:none}
+svg .est.on rect{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2.4}
+svg .est:hover rect,svg .est:focus-visible rect{stroke:var(--accent);stroke-width:2.4}
+.passo{background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:16px 18px;margin-top:12px}
+.passo-cab{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+.passo-cab h3{margin:0;font-size:19px;line-height:1.3}
+.passo-cab h3 .n{font:600 14px var(--mono);color:var(--accent);margin-right:8px}
+.navp{display:flex;gap:6px}
+.navp button{font:600 13px var(--sans);border:1px solid var(--rule);background:var(--paper);color:var(--ink);border-radius:999px;padding:5px 12px;cursor:pointer}
+.navp button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.navp button:disabled{opacity:.45;cursor:default}
+.passo p{margin:6px 0 10px}
+.passo pre{font:12.5px/1.5 var(--mono);background:var(--code-bg);border:1px solid var(--rule);border-radius:6px;padding:12px 14px;overflow-x:auto;white-space:pre;margin:8px 0}
+.passo .rode{font-size:13.5px;color:var(--ink-2);margin:4px 0 0}
+.entregas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;list-style:none;padding:0;margin:0}
+.entregas>li{background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:16px;display:grid;gap:8px;align-content:start}
+.entregas h3{margin:0;font-size:17px}
+.entregas h3 .n{font:600 13px var(--mono);color:var(--accent);display:block;margin-bottom:2px}
+.entregas ul{margin:0;padding-left:1.1em;font-size:14.5px;line-height:1.5}
+.entregas .acoes{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.melhorias{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;list-style:none;padding:0;margin:10px 0 0}
+.melhorias li{background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:14px 16px;font-size:14.5px;line-height:1.5}
+.melhorias b{display:block;margin-bottom:4px;font-size:15px}
+.melhorias .custo{color:var(--ink-2);display:block;margin-top:6px;font-size:13.5px}
+ol.perguntas{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 18px}
+ol.perguntas li{display:grid;grid-template-columns:44px 1fr;gap:6px;background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:12px 14px;font-size:15px;line-height:1.5}
+ol.perguntas .id{font:600 14px var(--mono);color:var(--accent)}
+ol.perguntas .muda{display:block;color:var(--ink-2);font-size:14px;line-height:1.5;margin-top:6px}
+ol.perguntas .muda b{color:var(--ink);font-weight:600}
+ol.perguntas{grid-template-columns:minmax(0,1fr)!important}
+svg .pill{fill:var(--code-bg);stroke:var(--ink-2);stroke-width:1.2;stroke-opacity:.6}
+svg .pill-crit{stroke:var(--crit);stroke-opacity:1}
+svg .j-ok{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.2}
+svg .j-crit{fill:var(--crit-soft);stroke:var(--crit);stroke-width:1.2}
+svg .ln-c{stroke:var(--crit);stroke-width:1.5;stroke-dasharray:5 4;fill:none}
+svg .num circle{fill:var(--accent)}
+svg .num text{fill:var(--surface);font:700 12px var(--sans)}
+section.tela h3.sub{font-size:19px;margin:30px 0 6px}
+details.mais{margin-top:14px}
+details.mais summary{cursor:pointer;color:var(--accent);font-weight:600;margin-bottom:10px}
+@media (max-width:760px){
+  .entregas,.comparar,.melhorias,ol.perguntas{grid-template-columns:minmax(0,1fr)}
+}
+/* achados da pratica */
+.ev{font:500 11.5px/1.3 var(--mono);padding:1px 7px;border-radius:3px;white-space:nowrap;display:inline-block;border:1px solid transparent}
+.ev-visto{background:var(--ok-soft);color:var(--ok)}
+.ev-revisao{background:var(--accent-soft);color:var(--accent)}
+.ev-desenho{border-color:var(--amber);border-style:dashed;color:var(--amber)}
+.parte{font:500 12px/1.3 var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);margin:26px 0 8px}
+.achados{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;list-style:none;padding:0;margin:0}
+.achados>li{background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:14px 16px;display:grid;gap:6px;align-content:start;font-size:14.5px;line-height:1.5}
+.achados .cab{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline}
+.achados .id{font:600 13px var(--mono);color:var(--accent)}
+.achados h3{margin:0;font-size:16px;line-height:1.35;flex-basis:100%}
+.achados dl{margin:0;display:grid;grid-template-columns:86px 1fr;gap:4px 10px}
+.achados dt{font:500 12px/1.6 var(--mono);color:var(--ink-2)}
+.achados dd{margin:0}
+@media (max-width:760px){ .achados{grid-template-columns:minmax(0,1fr)} .achados dl{grid-template-columns:1fr} }
+/* prioridade das perguntas */
+.prio{display:inline-flex;align-items:flex-end;gap:2px;height:14px;vertical-align:-1px}
+.prio i{display:block;width:4px;border-radius:1px;background:var(--rule)}
+.prio i:nth-child(1){height:6px} .prio i:nth-child(2){height:10px} .prio i:nth-child(3){height:14px}
+.prio.p1 i{background:var(--crit)}
+.prio.p2 i:nth-child(-n+2){background:var(--amber)}
+.prio.p3 i:nth-child(1){background:var(--ink-2)}
+ol.perguntas li{grid-template-columns:52px 1fr;scroll-margin-top:64px}
+ol.perguntas li:target{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+ol.perguntas .id{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+ol.perguntas .porque{color:var(--ink)}
+section.tela h3.sub .prio{margin-right:8px}
+.roteiro{display:grid;gap:10px;background:var(--surface);border:1px solid var(--rule);border-radius:8px;padding:14px 16px;margin:0 0 6px}
+.roteiro .linha{display:grid;grid-template-columns:230px 1fr;gap:6px 14px;align-items:start}
+.roteiro .rot{display:flex;gap:8px;align-items:center;font-size:14px;font-weight:600;padding-top:4px}
+.roteiro .chips{display:flex;flex-wrap:wrap;gap:6px}
+.roteiro a{display:inline-flex;gap:6px;align-items:baseline;font-size:13.5px;text-decoration:none;color:var(--ink);border:1px solid var(--rule);border-radius:999px;padding:3px 11px;background:var(--paper)}
+.roteiro a:hover{border-color:var(--accent);color:var(--accent)}
+.roteiro a .n{font:600 12px var(--mono);color:var(--accent)}
+.roteiro a .ord{font:700 11px/1 var(--sans);color:var(--surface);background:var(--crit);border-radius:50%;width:17px;height:17px;display:inline-grid;place-items:center;align-self:center}
+@media (max-width:760px){ .roteiro .linha{grid-template-columns:minmax(0,1fr)} }
+</style>
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">Discovery · SENSEUP-4936 · proposta de estudo para discussão</div>
+  <h1>Broker entre o Hub Engine e os workers</h1>
+  <p class="lede">Hoje, a fila de cada pedido está escrita no código do Hub Engine. A proposta: cada worker declara o que atende num manifesto, um linter confere que o fluxo cumpre o que o manifesto declara, uma varredura publica o registro e as lacunas, e o Hub só consulta o registro. Tudo o que aparece aqui roda num estudo simulado, com sellers, pedidos e ERPs inventados; nada disso está em uso na SenseUp.</p>
+  <div class="legenda">
+    <span class="grupo">
+      <svg width="20" height="20" viewBox="-10 -10 20 20" aria-hidden="true"><g class="mais"><circle r="9"/><path d="M-4 0H4M0 -4V4"/></g></svg>
+      nas figuras abre um exemplo tirado do código
+    </span>
+    <span class="grupo"><span class="st st-hoje">existe hoje</span><span class="st st-pronto">pronto</span><span class="st st-proposta">proposta</span><span class="st st-construir">construir</span><span class="st st-confirmar">a confirmar</span><span class="st st-sim">simulado</span></span>
+  </div>
+</header>
+
+<nav class="trilha" aria-label="Seções">
+  <ol>
+    <li><a href="#ideia"><span class="n">1</span>Hoje × proposta</a></li>
+    <li><a href="#pedido"><span class="n">2</span>Um pedido</a></li>
+    <li><a href="#demo"><span class="n">3</span>Demonstração</a></li>
+    <li><a href="#perguntas"><span class="n">4</span>Perguntas</a></li>
+  </ol>
+</nav>
+
+<!-- 1 ------------------------------------------------------------------ -->
+<section class="tela" id="ideia">
+  <h2><span class="n">1</span>Hoje × proposta</h2>
+  <p class="tese">Fluxo novo, versão nova ou seller piloto hoje exigem mudar o código e publicar o Hub Engine. Na proposta, instalar o worker com o seu manifesto basta: a varredura o encontra e o registro passa a rotear para ele.</p>
+  <figure class="fig">
+    <div class="fig-caixa">
+    <svg viewBox="0 0 960 470" font-size="14" role="img" aria-label="Hoje o Hub Engine decide a fila por uma lista fixa no código; na proposta, cada worker traz um manifesto no workspace, o linter confere se o fluxo cumpre o manifesto, a varredura publica o registro e as lacunas, e o Hub Engine consulta o registro para montar o job e achar a fila certa">
+      <defs><marker id="b1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="seta" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+      <rect class="zona" x="10" y="10" width="940" height="168" rx="8"/>
+      <text class="b" x="26" y="36">Hoje: a amarração está no código</text>
+      <rect class="bx" x="30" y="72" width="120" height="56" rx="6"/>
+      <text class="b" x="90" y="96" text-anchor="middle">webhook</text><text class="tm s12" x="90" y="115" text-anchor="middle">Flexy, Bling…</text>
+      <line class="ln" x1="151" y1="100" x2="194" y2="100" marker-end="url(#b1)"/>
+      <g class="hot" data-d="switch" tabindex="0" role="button" aria-label="Exemplo: a amarração de hoje">
+        <rect class="bx" x="196" y="52" width="270" height="108" rx="6"/>
+        <text class="b" x="212" y="76">Hub Engine</text>
+        <g class="mono s12"><text x="212" y="100">se order.create → canal</text><text x="212" y="120">se stock.update → canal</text><text class="tc" x="212" y="140">senão → fila de erro</text></g>
+        <g class="mais" transform="translate(466 52)"><circle r="9"/><path d="M-4 0H4M0 -4V4"/></g>
+      </g>
+      <g class="ln" marker-end="url(#b1)"><path d="M467 106 C 498 106, 498 66, 528 66"/><path d="M467 106 L 528 108"/><path d="M467 106 C 498 106, 498 150, 528 150"/></g>
+      <rect class="bx" x="530" y="50" width="130" height="32" rx="6"/><rect class="bx" x="530" y="92" width="130" height="32" rx="6"/><rect class="bx" x="530" y="134" width="130" height="32" rx="6"/>
+      <g class="mono s12" text-anchor="middle"><text x="595" y="71">canal.bling</text><text x="595" y="113">canal.omie</text><text x="595" y="155">canal.tiny</text></g>
+      <rect class="bx-crit" x="700" y="52" width="230" height="108" rx="6"/>
+      <text class="s13" x="716" y="78">fluxo novo, versão nova</text><text class="s13" x="716" y="97">ou seller piloto?</text>
+      <text class="b s13" x="716" y="124">mudar o código e</text><text class="b s13" x="716" y="143">publicar o Hub Engine</text>
+
+      <rect class="zona" x="10" y="196" width="940" height="264" rx="8" style="stroke:var(--accent)"/>
+      <text class="b" x="26" y="222">Proposta: o workspace declara, o linter confere, a varredura publica, o registro decide</text>
+      <rect class="bx" x="30" y="240" width="192" height="206" rx="8"/>
+      <text class="b s13" x="44" y="262">workspace</text>
+      <g class="hot" data-d="manifesto" tabindex="0" role="button" aria-label="Exemplo: o manifesto do worker bling-pedido">
+        <rect class="bx-acc" x="42" y="274" width="168" height="46" rx="5"/>
+        <text class="mono s12" x="54" y="294">bling-pedido/</text><text class="s11" x="54" y="311">flows.json + manifest.json</text>
+        <g class="mais" transform="translate(210 274)"><circle r="9"/><path d="M-4 0H4M0 -4V4"/></g>
+      </g>
+      <rect class="bx" x="42" y="330" width="168" height="46" rx="5"/>
+      <text class="mono s12" x="54" y="350">omie-pedido-v2/</text><text class="tc s11" x="54" y="367">manifesto que mente</text>
+      <rect class="bx" x="42" y="386" width="168" height="46" rx="5"/>
+      <text class="mono s12" x="54" y="406">omie-estoque-legado/</text><text class="tc s11" x="54" y="423">só flows.json: invisível</text>
+      <line class="ln" x1="223" y1="292" x2="236" y2="292" marker-end="url(#b1)"/>
+      <g class="hot" data-d="linter" tabindex="0" role="button" aria-label="Exemplo: o linter confere o fluxo contra o manifesto">
+        <rect class="bx-amb" x="238" y="256" width="106" height="72" rx="6"/>
+        <text class="b" x="291" y="280" text-anchor="middle">Linter</text><text class="s12" x="291" y="299" text-anchor="middle">o fluxo cumpre</text><text class="s12" x="291" y="316" text-anchor="middle">o manifesto?</text>
+        <g class="mais" transform="translate(344 256)"><circle r="9"/><path d="M-4 0H4M0 -4V4"/></g>
+      </g>
+      <text class="tc s11 b" x="291" y="346" text-anchor="middle">reprovou:</text><text class="tc s11 b" x="291" y="360" text-anchor="middle">o deploy para</text>
+      <line class="ln" x1="345" y1="292" x2="358" y2="292" marker-end="url(#b1)"/>
+      <g class="hot" data-d="varredura" tabindex="0" role="button" aria-label="Exemplo: saída da varredura">
+        <rect class="bx-acc" x="360" y="256" width="110" height="72" rx="6"/>
+        <text class="b" x="415" y="280" text-anchor="middle">Varredura</text><text class="s12" x="415" y="299" text-anchor="middle">valida, registra</text><text class="s12" x="415" y="316" text-anchor="middle">e publica</text>
+        <g class="mais" transform="translate(470 256)"><circle r="9"/><path d="M-4 0H4M0 -4V4"/></g>
+      </g>
+      <line class="ln" x1="415" y1="329" x2="415" y2="357" marker-end="url(#b1)"/>
+      <g class="hot" data-d="lacunas" tabindex="0" role="button" aria-label="Exemplo: lacunas publicadas">
+        <rect class="bx-amb" x="360" y="360" width="110" height="72" rx="6"/>
+        <text class="b" x="415" y="384" text-anchor="middle">Lacunas</text><text class="s11" x="415" y="403" text-anchor="middle">seller sem worker,</text><text class="s11" x="415" y="420" text-anchor="middle">parâmetro faltando</text>
+        <g class="mais" transform="translate(470 360)"><circle r="9"/><path d="M-4 0H4M0 -4V4"/></g>
+      </g>
+      <line class="ln" x1="471" y1="292" x2="487" y2="292" marker-end="url(#b1)"/>
+      <g class="hot" data-d="registro" tabindex="0" role="button" aria-label="Exemplo: regras do registro">
+        <rect class="bx-acc" x="490" y="244" width="230" height="116" rx="6"/>
+        <text class="b" x="506" y="268">Registro</text>
+        <g class="mono s11"><text x="506" y="292">pedido  flexy → bling</text><text class="tm" x="506" y="309">  workers.pedido.flexy-bling.v1</text><text x="506" y="332">notas   tiny → flexy</text><text class="tm" x="506" y="349">  workers.notas-fiscais…</text></g>
+        <g class="mais" transform="translate(720 244)"><circle r="9"/><path d="M-4 0H4M0 -4V4"/></g>
+      </g>
+      <line class="ln" x1="850" y1="204" x2="850" y2="242" marker-end="url(#b1)"/>
+      <text class="s12 tm" x="858" y="230">webhook</text>
+      <rect class="bx" x="770" y="244" width="160" height="72" rx="6"/>
+      <text class="b" x="850" y="268" text-anchor="middle">Hub Engine</text><text class="s13" x="850" y="288" text-anchor="middle">pergunta ao registro:</text><text class="s13" x="850" y="305" text-anchor="middle">qual fila?</text>
+      <line class="ln" x1="769" y1="282" x2="723" y2="282" marker-end="url(#b1)"/>
+      <text class="s11 tm" x="746" y="274" text-anchor="middle">consulta</text>
+      <line class="ln" x1="850" y1="317" x2="850" y2="367" marker-end="url(#b1)"/>
+      <g class="hot" data-d="job" tabindex="0" role="button" aria-label="Exemplo: o job v1">
+        <rect class="bx-acc" x="770" y="370" width="160" height="70" rx="6"/>
+        <text class="b" x="850" y="394" text-anchor="middle">job v1</text><text class="s12" x="850" y="413" text-anchor="middle">na fila do</text><text class="s12" x="850" y="430" text-anchor="middle">worker certo</text>
+        <g class="mais" transform="translate(930 370)"><circle r="9"/><path d="M-4 0H4M0 -4V4"/></g>
+      </g>
+    </svg>
+    </div>
+    <figcaption>O linter confere que o manifesto diz a verdade sobre o fluxo, antes do deploy e de novo na varredura: o registro confia no que o manifesto declara. Service discovery aqui é de <b>capacidade</b>, não de instância: com uma fila no meio, o Kubernetes e a fila cuidam das réplicas, e o Hub só precisa saber qual fila atende "este seller, neste fluxo, de A para B". O switch de hoje é o <i>Content-Based Router</i> do Guia de Padrões; a proposta é o <i>Dynamic Router</i> do livro de Hohpe e Woolf, que é a base do Guia mas não está no catálogo dele.</figcaption>
+  </figure>
+  <ul class="pontos">
+    <li><b>Um worker por fluxo e par de sistemas</b>Um fluxo, um manifesto e um worker para todos os sellers daquela combinação, cada job com a credencial do seu seller, e réplicas que sobem com a carga, como propõe a apresentação Fundação de produto (01/10). A exceção é o canary de versão, ligado só para um seller.</li>
+    <li><b>Erro aparece antes do pedido</b>O linter barra o manifesto que não bate com o fluxo; a varredura aponta seller sem worker, configuração incompleta, worker sem manifesto e manifesto desatualizado. Hoje, cada um aparece como falha em produção.</li>
+    <li><b>Sem backend novo no caminho</b>O Hub lê o registro com cache; a varredura roda fora do caminho do pedido, no pipeline.</li>
+  </ul>
+</section>
+
+<!-- 2 ------------------------------------------------------------------ -->
+<section class="tela" id="pedido">
+  <h2><span class="n">2</span>O caminho de um pedido, passo a passo</h2>
+  <p class="tese">O pedido FX-1 da Loja Azul, da Flexy para o Bling, em oito passos. O broker muda os passos 3 a 5: de quem é o pedido, como o job é montado e qual fila o recebe.</p>
+  <figure class="fig">
+    <div class="fig-caixa">
+    <svg id="trilho" viewBox="0 0 960 140" font-size="14" role="group" aria-label="Oito passos do pedido FX-1; clique num passo para ver o dado">
+      <defs><marker id="b2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="seta" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+      <path d="M249 40 V32 H592 V40" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+      <text class="ta s12 b" x="420" y="24" text-anchor="middle">o broker: o que este RFC muda</text>
+    </svg>
+    </div>
+  </figure>
+  <div class="passo" id="passo" aria-live="polite"></div>
+</section>
+
+<!-- 3 ------------------------------------------------------------------ -->
+<section class="tela" id="demo">
+  <h2><span class="n">3</span>O que a demonstração mostra</h2>
+  <p class="tese">As peças da proposta rodando de verdade, numa simulação: o mesmo pedido da seção 2, agora com fila, workers e métricas.</p>
+  <p>As regras da proposta (job v1, manifesto, linter, varredura e registro) rodam num Kubernetes local, com fila, workers Node-RED e métricas. Um pedido atravessa os oito passos da seção 2; o número em cada peça é o passo. Rodam também os outros três fluxos do Hub de Sellers, do ERP para a Flexy, cada um com uma natureza de objeto: Estoque e preço (cadastro), Status de Pedido (transação) e Notas Fiscais (documento, por consulta periódica). Os demais workers cobrem os outros padrões dos PDFs. Cada worker tem o seu Node-RED, num endereço próprio: <button type="button" class="ver" data-d="nodered">os 20 fluxos no Node-RED</button></p>
+  <figure class="fig">
+    <div class="fig-caixa">
+    <svg viewBox="0 0 960 470" font-size="14" role="img" aria-label="A simulação do estudo. 1: a Flexy simulada avisa o Hub. 2: o ingresso do Hub Engine confere a assinatura e a entrega repetida e responde 202, depois de pôr o evento na fila hub.entrada do Pub/Sub (o emulador; a mensageria da SenseUp está em aberto). 3 a 5: o motor resolve o seller, monta o job v1 e pergunta ao registro qual fila o recebe; sem worker ou sem configuração, o evento vai para hub.erros. 6: a fila do seller, criada a partir do manifesto, guarda o job. 7: o worker bling-pedido, Node-RED num Deployment só para todos os sellers, cria o pedido no Bling simulado; a fila do Bazar Sol entra no mesmo worker. Tudo roda num namespace do Kubernetes, instalado pelo Helm a partir das imagens Docker. O omie-pedido entra com um comando, sem mudar o Hub. O Redis guarda o estado por seller, o limite por conta, as entregas vistas e o registro. 8: logs com o mesmo transaction_id, Prometheus e Grafana">
+      <defs><marker id="m-s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="seta" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+      <rect class="zona" x="156" y="34" width="628" height="358" rx="10"/>
+      <text class="rot" x="170" y="56">Kubernetes (kind) · namespace · Helm</text>
+      <rect x="690" y="42" width="82" height="18" rx="3" fill="none" stroke="var(--amber)" stroke-dasharray="4 3"/><text class="tb s11" x="731" y="55" text-anchor="middle">simulado</text>
+
+      <rect class="bx" x="10" y="70" width="132" height="92" rx="8" stroke-dasharray="5 4"/>
+      <text class="b s13" x="22" y="94">Flexy</text>
+      <g class="s12"><text x="22" y="112">cria o pedido da</text><text x="22" y="128">Loja Azul e avisa</text><text x="22" y="144">o Hub (webhook)</text></g>
+
+      <rect class="bx" x="172" y="70" width="168" height="62" rx="6"/>
+      <text class="b s13" x="184" y="94">Hub Engine: ingresso</text>
+      <g class="s12"><text x="184" y="111">assinatura e repetição</text><text x="184" y="126">responde 202</text></g>
+
+      <rect class="bx-acc" x="172" y="158" width="168" height="80" rx="6"/>
+      <text class="b s13" x="184" y="186">Hub Engine: motor</text>
+      <g class="s12"><text x="184" y="204">de quem é · job v1</text><text x="184" y="220">o registro diz a fila</text></g>
+      <text class="ta s12 b" x="184" y="258">3 a 5: o que o RFC muda</text>
+
+      <rect class="bx-acc" x="172" y="276" width="168" height="70" rx="6"/>
+      <text class="b s13" x="184" y="298">varredura (CronJob)</text>
+      <g class="s12"><text x="184" y="316">linter · filas do manifesto</text><text x="184" y="332">registro e lacunas</text></g>
+
+      <rect class="bx-amb" x="368" y="70" width="190" height="226" rx="6"/>
+      <text class="b s13" x="380" y="92">Pub/Sub · emulador</text>
+      <rect class="pill" x="380" y="104" width="166" height="24" rx="4"/><text class="mono s12" x="390" y="120">hub.entrada</text>
+      <text class="tm s11" x="380" y="148">uma fila por seller</text>
+      <rect class="pill" x="380" y="156" width="166" height="24" rx="4"/><text class="mono s11" x="390" y="172">…bling.v1.t-loja-azul</text>
+      <rect class="pill" x="380" y="188" width="166" height="24" rx="4"/><text class="mono s11" x="390" y="204">…bling.v1.t-bazar-sol</text>
+      <rect class="pill" x="380" y="222" width="166" height="24" rx="4"/><text class="mono s11" x="390" y="238">.dlq .invalidas</text>
+      <rect class="pill pill-crit" x="380" y="258" width="166" height="24" rx="4"/><text class="mono s12 tc" x="390" y="274">hub.erros</text>
+
+      <g class="hot" data-d="nodered" tabindex="0" role="button" aria-label="Os editores Node-RED de cada fluxo da simulação, com o endereço">
+        <rect class="bx-ok" x="586" y="70" width="178" height="92" rx="6"/>
+        <text class="b s13" x="598" y="94">bling-pedido</text>
+        <g class="s12"><text x="598" y="111">Node-RED · 8 partes</text><text x="598" y="127">um Deployment, todos</text><text x="598" y="143">idempotência, limite 3/s</text></g>
+        <g class="mais" transform="translate(764 70)"><circle r="9"/><path d="M-4 0H4M0 -4V4"/></g>
+      </g>
+      <rect class="bx-ok" x="586" y="176" width="178" height="44" rx="6"/>
+      <text class="b s13" x="598" y="195">fila da Bazar Sol</text><text class="s12" x="598" y="211">o mesmo worker</text>
+      <rect x="586" y="232" width="178" height="44" rx="6" fill="none" stroke="var(--ok)" stroke-width="1.4" stroke-dasharray="5 4"/>
+      <text class="b s13" x="598" y="251">omie-pedido</text><text class="tm s12" x="598" y="267">entra sem mudar o Hub</text>
+
+      <rect class="bx" x="800" y="70" width="150" height="92" rx="8" stroke-dasharray="5 4"/>
+      <text class="b s13" x="812" y="94">ERPs</text>
+      <g class="s12"><text x="812" y="112">Bling · Tiny · Omie</text><text x="812" y="128">recusam o repetido</text><text x="812" y="144">Bling: 3 req/s</text></g>
+
+      <rect class="bx" x="368" y="312" width="396" height="64" rx="6"/>
+      <text class="b s13" x="380" y="333">Redis: a memória compartilhada</text>
+      <g class="s12"><text x="380" y="351">estado por seller (idempotência) · limite por conta</text><text x="380" y="367">entregas já vistas · o registro (a varredura grava)</text></g>
+
+      <g class="ln" marker-end="url(#m-s)">
+        <path d="M142 100 L170 100"/>
+        <path d="M340 104 L378 116"/>
+        <path d="M382 128 C 362 148, 358 168, 342 184"/>
+        <path d="M340 206 C 360 200, 362 176, 378 170"/>
+        <path d="M546 168 C 566 160, 566 132, 584 124"/>
+        <path d="M546 200 L584 198"/>
+        <path d="M764 116 L798 116"/>
+        <path d="M340 330 L366 336"/>
+        <path d="M470 378 L470 406"/>
+      </g>
+      <path class="ln-c" d="M340 226 C 358 250, 362 266, 378 270" marker-end="url(#m-s)"/>
+
+      <rect class="bx" x="10" y="408" width="940" height="52" rx="6"/>
+      <text class="b s13" x="34" y="430">O rastro fica</text>
+      <text class="s12" x="34" y="448">logs JSON com o mesmo transaction_id em 4 pods · o Prometheus coleta as métricas de cada pod (5 alertas) · Grafana e página de métricas · as imagens são Docker</text>
+
+      <g class="num" transform="translate(10 70)"><circle r="10"/><text y="4" text-anchor="middle">1</text></g>
+      <g class="num" transform="translate(172 70)"><circle r="10"/><text y="4" text-anchor="middle">2</text></g>
+      <g class="num" transform="translate(172 158)"><circle r="10"/><text y="4" text-anchor="middle">3</text></g>
+      <g class="num" transform="translate(194 158)"><circle r="10"/><text y="4" text-anchor="middle">4</text></g>
+      <g class="num" transform="translate(216 158)"><circle r="10"/><text y="4" text-anchor="middle">5</text></g>
+      <g class="num" transform="translate(558 168)"><circle r="10"/><text y="4" text-anchor="middle">6</text></g>
+      <g class="num" transform="translate(586 70)"><circle r="10"/><text y="4" text-anchor="middle">7</text></g>
+      <g class="num" transform="translate(10 408)"><circle r="10"/><text y="4" text-anchor="middle">8</text></g>
+    </svg>
+    </div>
+    <figcaption>A figura mostra a simulação como o estudo a sobe: um Kubernetes local (kind), o Google Pub/Sub pelo emulador oficial, Helm, Redis e workers Node-RED, com um Deployment do <code>bling-pedido</code> para todos os sellers, cada um com a sua fila. Mensageria e Redis são escolhas do estudo, e não como a SenseUp roda: a fila interna está em aberto, e com o RabbitMQ (<code>sim.py subir --mensageria rabbitmq</code>) a forma é a mesma. A figura segue a saída real de <code>python simulacao/sim.py pedido</code>; sellers, pedidos e ERPs são <span class="st st-sim">simulado</span>.</figcaption>
+  </figure>
+</section>
+
+<!-- 4 ------------------------------------------------------------------ -->
+<section class="tela" id="perguntas">
+  <h2><span class="n">4</span>Perguntas</h2>
+  <p class="tese">As perguntas que mais ajudam a entender como o Hub Engine e os workers devem funcionar. Nenhuma parte de uma decisão tomada: a simulação mostra um caminho possível, não o escolhido.</p>
+  <ol class="perguntas">
+      <li><span class="id">1</span><div>Hoje o Hub escolhe a fila por uma lista no código. Um registro alimentado pelos manifestos dos workers faria sentido como próximo passo, ou haveria outro caminho preferido?</div></li>
+      <li><span class="id">2</span><div>O manifesto do worker declararia só a tupla (fluxo, ponta A, ponta B) e a runtime, ou também o que o fluxo lê (credenciais, parâmetros) e a garantia de entrega?</div></li>
+      <li><span class="id">3</span><div>Como se versionariam o módulo e o fluxo, e como ficaria estável o ID que liga o fluxo do catálogo ao worker?</div></li>
+      <li><span class="id">4</span><div>A instância do Hub Engine receberia o pacote do módulo por uma API do catálogo ou por um arquivo exportado?</div></li>
+      <li><span class="id">5</span><div>Que critérios a fila interna precisaria cumprir (ordem por pedido, fila por seller, dead letter, espera entre retentativas) para a escolha da tecnologia?</div></li>
+      <li><span class="id">6</span><div>Onde o worker guardaria o que precisa lembrar entre execuções (pedido já criado, número no ERP), de modo que todas as réplicas vejam o mesmo?</div></li>
+      <li><span class="id">7</span><div>Ao terminar, o worker devolveria o resultado ao Hub, que decidiria pelo catálogo o próximo fluxo, ou o próprio worker publicaria o evento seguinte?</div></li>
+  </ol>
+</section>
+
+<footer>
+  <span>Proposta de estudo para discussão. O Hub Engine de hoje está descrito como se vê nas telas, no diagrama e num dataflow; o que não aparece neles está marcado <span class="st st-confirmar">a confirmar</span>.</span>
+  <span>A demonstração da seção 3 é simulada: roda as regras com fila, workers Node-RED e métricas num Kubernetes local (<code>simulacao/LEIA-ME.md</code>). Sellers, contas, ERPs e formatos de webhook são inventados.</span>
+</footer>
+</div>
+
+<!-- painel de detalhe -->
+<div id="veu" hidden></div>
+<aside id="painel" hidden role="dialog" aria-modal="true" aria-labelledby="painel-titulo">
+  <div class="cab">
+    <div><div class="eyebrow" id="painel-eyebrow">Exemplo</div><h3 id="painel-titulo"></h3></div>
+    <button type="button" class="fechar" id="painel-fechar">Fechar</button>
+  </div>
+  <div id="painel-corpo"></div>
+</aside>
+
+<!-- ===================== conteúdos dos detalhes ===================== -->
+<!-- ===================== conteúdos dos detalhes ===================== -->
+<template id="d-switch" data-titulo="A amarração de hoje" data-eyebrow="Hub Engine · o que se vê num dataflow">
+  <p>A aba <i>Produtor</i> monta o envelope e o despacha por um switch <i>Rotear por operation</i>, com a lista de operations escrita no fluxo. O canal sai do ERP do seller. <span class="st st-hoje">existe hoje</span> <span class="st st-confirmar">no Hub Engine é o mesmo desenho?</span></p>
+  <p>Consequência, na simulação do estudo: a fila é a do ERP, qualquer que seja o fluxo ou a direção.</p>
+<pre>Hoje, RoteadorFixo: erp_id = bling, operation = order.create
+  -&gt; fila canal.bling
+
+  Loja Azul, pedido (flexy -&gt; bling)     -&gt; fila canal.bling
+  Loja Azul, estoque (bling -&gt; flexy)    -&gt; fila canal.bling
+  Mundo Pet, pedido (flexy -&gt; omie)      -&gt; fila canal.omie</pre>
+  <p>Fluxo novo, versão nova, seller piloto ou worker gerado pelo Copilot: todos exigem mudar o código e publicar o Hub Engine.</p>
+  <p class="rode"><b>Rode:</b> <code>python -m hub_engine.passo_a_passo 5</code></p>
+</template>
+
+<template id="d-manifesto" data-titulo="O manifesto do worker" data-eyebrow="workspace/bling-pedido/manifest.json">
+<pre>{
+  "manifest_version": "1",
+  "description": "Pedido Flexy -&gt; Bling, para todos os sellers com Bling",
+  "worker_id": "bling-pedido",
+  "version": "1.0.0",
+  "module": {"id": "ecommerce", "version": "1"},
+  "runtime": "node-red",
+  "flow": "pedido",
+  "system_a": "flexy",
+  "system_b": "bling",
+  "job_contract": "1",
+  "queue": "workers.pedido.flexy-bling.v1",
+  "key": "id do pedido na Flexy (job.object_key)",
+  "tenants": "*",
+  "facets": {
+    "trigger": "webhook",
+    "capture": "evento",
+    "delivery": "effectively_once",
+    "ordering": "por_chave",
+    "fanout": "A-&gt;B",
+    "object_nature": "transacao",
+    "ownership": "pendente",
+    "deletion": "pendente"
+  },
+  "requires": {
+    "credentials": {"flexy": ["STORE_TOKEN"],
+                    "bling": ["ACCESS_TOKEN"]},
+    "execParams": ["loja_id", "deposito"]
+  },
+  "author": "human",
+  "flows_file": "flows.json",
+  "flows_sha256": "fc7061948995…"
+}</pre>
+  <h4>Por que fora do JSON do Node-RED</h4>
+  <ul>
+    <li>O editor do Node-RED descarta propriedades que não conhece ao reexportar.</li>
+    <li>O pipeline e a varredura leem o manifesto sem abrir o fluxo.</li>
+    <li>O mesmo formato serve ao worker escrito à mão e ao gerado pelo Copilot.</li>
+  </ul>
+  <h4>Validação em quatro camadas</h4>
+  <ul>
+    <li><b>Estrutura</b>, pelo esquema: campo desconhecido reprova (<code>tenant</code> em vez de <code>tenants</code> não some em silêncio).</li>
+    <li><b>Sentido</b>, pelo catálogo: os IDs existem, a direção bate com o fluxo, as facetas estão no vocabulário do P&amp;D, e ordem por chave traz a <code>key</code>. A Anatomia declara a ordem junto com a chave (<code>ordering: by_key: pedido</code>, p. 23). Sem a chave, o broker não sabe como dividir a fila para manter a ordem de cada pedido. <button type="button" class="ver" data-d="particao">a partição da fila</button></li>
+    <li><b>Vínculo</b>, pelo hash do fluxo: explicado logo abaixo.</li>
+    <li><b>Verdade</b>, pelo linter: o fluxo cumpre o que o manifesto declara. <button type="button" class="ver" data-d="linter">o linter</button></li>
+  </ul>
+  <h4>O vínculo: o hash compara o fluxo de hoje com o de quando o manifesto foi escrito</h4>
+  <p>Quem escreve o manifesto, à mão ou pelo gerador, grava em <code>flows_sha256</code> o hash do <code>flows.json</code> daquele momento. O hash funciona como uma impressão digital do fluxo. A cada passada, a varredura recalcula o hash do <code>flows.json</code> que está hoje na pasta do worker e compara com o valor guardado. Ninguém compara o manifesto com um arquivo de fora: são dois arquivos da mesma pasta.</p>
+<pre>workspace/bling-pedido/
+  manifest.json  flows_sha256 = fc7061948995…  (guardado)
+  flows.json     hash de hoje = fc7061948995…  igual: ok
+
+alguém apaga a descrição do nó "ja processado?"
+no editor e reexporta o flows.json:
+  flows.json     hash de hoje = 6fb253037f87…  diferente:
+  INVALIDO  bling-pedido: manifesto desatualizado</pre>
+  <p>O hash é calculado sobre o fluxo canônico, com as chaves em ordem e sem espaços. Reindentar o arquivo não muda o hash; mudar um nó muda. O hash não diz o que mudou. Ele obriga alguém a rever o manifesto e rodar o linter de novo, porque a fila, as credenciais e a entrega declaradas podem não valer mais para o fluxo novo. Na demonstração, o <code>tiny-estoque</code> cai nesse caso. <span class="st st-proposta">proposta</span> <code>src/hub_engine/varredura.py</code></p>
+  <h4>O que é cada campo</h4>
+  <div class="tbl"><table class="campos">
+    <thead><tr><th>Campo e valor no exemplo</th><th>O que é</th></tr></thead>
+    <tbody>
+      <tr class="grupo"><td colspan="2">Quem é o worker</td></tr>
+      <tr><td><code>manifest_version</code><span class="v">"1"</span></td><td>Versão do formato do manifesto. O esquema v1 só aceita "1".</td></tr>
+      <tr><td><code>description</code><span class="v">texto livre</span></td><td>Frase para quem lê o registro. Opcional.</td></tr>
+      <tr><td><code>worker_id</code><span class="v">"bling-pedido"</span></td><td>Nome único do worker. É por ele que o registro ativa, desativa e troca versões.</td></tr>
+      <tr><td><code>version</code><span class="v">"1.0.0"</span></td><td>Versão do worker (semver). A nova pode entrar antes para poucos sellers (<code>tenants</code>).</td></tr>
+      <tr><td><code>module</code><span class="v">ecommerce · "1"</span></td><td>O módulo do catálogo que o fluxo implementa, e a versão dele: o pacote de fluxos que se vende e que configura a instância do Hub (Fundação de produto, 01/10). A validação recusa módulo fora do catálogo, fluxo de outro módulo e versão diferente. <span class="st st-proposta">proposta</span></td></tr>
+      <tr><td><code>runtime</code><span class="v">"node-red"</span></td><td><code>node-red</code> ou <code>n8n</code>: "um padrão, duas runtimes", com o mesmo contrato de job (Fundação, slide 12). O linter do estudo lê só o Node-RED: a regra W100 aponta o worker n8n. <span class="st st-proposta">proposta</span></td></tr>
+      <tr><td><code>author</code><span class="v">"human"</span></td><td>Quem escreveu: <code>human</code> ou <code>copilot</code>. Os dois passam pelas mesmas quatro camadas.</td></tr>
+
+      <tr class="grupo"><td colspan="2">O que ele atende: o Hub roteia por aqui</td></tr>
+      <tr><td><code>flow</code><span class="v">"pedido"</span></td><td>ID do fluxo no catálogo.</td></tr>
+      <tr><td><code>system_a</code> · <code>system_b</code><span class="v">"flexy" · "bling"</span></td><td>Origem e destino, por ID do catálogo. O tipo de cada um tem de bater com a direção do fluxo: o Pedido vai do marketplace para o ERP. Na reunião de 01/10, A e B são as pontas, com os papéis do módulo, e o sentido vem do fluxo: a Flexy fica na ponta A também no Estoque. Trocar a convenção renomeia filas e workers e espera o metamodelo de 08/10. <span class="st st-construir">construir</span></td></tr>
+      <tr><td><code>tenants</code><span class="v">"*"</span></td><td>Sellers atendidos: todos (<code>*</code>) ou uma lista, para ligar uma versão nova primeiro para poucos.</td></tr>
+      <tr><td><code>job_contract</code><span class="v">"1"</span></td><td>Versão do contrato do job que o worker entende: os campos do envelope que chega da fila.</td></tr>
+      <tr><td><code>queue</code><span class="v">"workers.pedido.flexy-bling.v1"</span></td><td>A fila que o worker consome. O Hub publica o job nela; a regra W202 do linter confere que o fluxo ouve essa fila.</td></tr>
+      <tr><td><code>key</code><span class="v">id do pedido na Flexy</span></td><td>A chave de negócio: o que identifica o objeto. Com ordem por chave é obrigatória, porque é por ela que o broker divide a fila. <button type="button" class="ver" data-d="particao">a partição</button></td></tr>
+
+      <tr class="grupo"><td colspan="2">As facetas: os oito campos da Anatomia, p. 23</td></tr>
+      <tr><td><code>trigger</code><span class="v">"webhook"</span><span class="f">Gatilho, p. 7</span></td><td>O que dispara o fluxo.<span class="op">webhook · fila · agendamento · encadeado</span><span class="p23">Se declarar <b>webhook</b>, o Hub Engine pode inserir: endpoint, ack e Content Enricher (p. 23)</span></td></tr>
+      <tr><td><code>capture</code><span class="v">"evento"</span><span class="f">Captura, p. 8</span></td><td>Como o dado chega ao fluxo: recebido no aviso ou buscado na origem.<span class="op">full_load · watermark · cdc · evento</span><span class="p23">Se declarar <b>watermark</b>, o Hub Engine pode inserir: agendador, estado da marca e avanço no término (p. 23)</span></td></tr>
+      <tr><td><code>delivery</code><span class="v">"effectively_once"</span><span class="f">Semântica de entrega, p. 14</span></td><td>Quantas vezes o efeito pode acontecer no destino. O registro exige effectively-once para Pedido e Nota, e a W106 confere as peças.<span class="op">at_most_once · at_least_once · effectively_once</span><span class="p23">Se declarar <b>effectively-once</b>, o Hub Engine pode inserir: idempotência, chave no destino, gravação após sucesso (p. 23)</span></td></tr>
+      <tr><td><code>ordering</code><span class="v">"por_chave"</span><span class="f">Requisito de ordem, p. 15</span></td><td>Se a sequência das mensagens importa, e em que escopo: nenhum, por objeto ou tudo.<span class="op">nenhuma · por_chave · global</span><span class="p23">Se declarar <b>by_key: pedido</b>, o Hub Engine pode inserir: partição da fila e Resequencer (p. 23)</span></td></tr>
+      <tr><td><code>fanout</code><span class="v">"A-&gt;B"</span><span class="f">Direção, p. 6</span></td><td>Para onde o dado vai: um destino, os dois sentidos, ou vários destinos.<span class="op">A-&gt;B · A&lt;-&gt;B · 1-&gt;N</span><span class="p23">Se declarar <b>1→N</b>, o Hub Engine pode inserir: Pub-Sub com fila e throttling por destino (p. 23)</span></td></tr>
+      <tr><td><code>object_nature</code><span class="v">"transacao"</span><span class="f">Natureza do objeto, p. 17</span></td><td>Que tipo de objeto viaja. Transação "não pode perder nem duplicar, e a ordem de status importa".<span class="op">cadastro · transacao · telemetria · documento</span><span class="p23">Se declarar <b>cadastro</b>, o Hub Engine pode inserir: sugestão de Debounce e Detecção de mudança (p. 23)</span></td></tr>
+      <tr><td><code>ownership</code><span class="v">"pendente"</span><span class="f">Dono do dado, p. 16</span></td><td>Quem manda em cada dado quando os dois lados o editam.<span class="op">por_objeto · por_campo · sem_dono</span><span class="p23">Se declarar <b>por campo</b>, o Hub Engine pode inserir: máscara de campos na Saída (p. 23)</span></td></tr>
+      <tr><td><code>deletion</code><span class="v">"pendente"</span><span class="f">Exclusão, p. 18</span></td><td>Como a exclusão na origem chega ao destino.<span class="op">hard_delete · soft_delete · tombstone · nao_sincroniza</span><span class="p23">Se declarar <b>tombstone</b>, o Hub Engine pode inserir: lookup XREF e ação de remoção (p. 23)</span></td></tr>
+
+      <tr class="grupo"><td colspan="2">O que o worker lê: chega no job, por seller</td></tr>
+      <tr><td><code>requires.credentials</code><span class="v">flexy: STORE_TOKEN<br>bling: ACCESS_TOKEN</span></td><td>As chaves de credencial que o fluxo lê, por sistema, só de A e de B. A W105 confere que o fluxo lê exatamente essas.</td></tr>
+      <tr><td><code>requires.execParams</code><span class="v">loja_id, deposito</span></td><td>Parâmetros de execução de cada seller. A varredura aponta o seller que não os tem (CONFIGURACAO).</td></tr>
+
+      <tr class="grupo"><td colspan="2">O vínculo com o fluxo</td></tr>
+      <tr><td><code>flows_file</code><span class="v">"flows.json"</span></td><td>O arquivo do fluxo, na mesma pasta.</td></tr>
+      <tr><td><code>flows_sha256</code><span class="v">"fc7061948995…"</span></td><td>O hash do fluxo quando o manifesto foi escrito: a camada Vínculo, acima.</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li><b><code>pendente</code></b>: a ficha técnica ainda não sabe a resposta, e o manifesto não afirma o que a ficha não sabe. No Pedido, dono do dado e exclusão ficam em aberto. A Anatomia trata o cancelamento como a exclusão do pedido (p. 21). Na simulação, o cancelamento só viaja como status, do ERP para a Flexy, no fluxo Status de Pedido. O sentido Flexy → ERP ainda não existe.</li>
+    <li><b>Os nomes</b>: os oito campos de <code>facets</code> são os da p. 23, que o próprio P&amp;D chama de "proposta para discussão: nomes de campo e regras são rascunho". Os valores estão no vocabulário do estudo: <code>por_chave</code> com <code>key</code> faz o papel de <code>by_key: pedido</code>. Todos os outros campos são proposta do estudo (RFC SENSEUP-4936). <span class="st st-proposta">proposta</span></li>
+    <li><b>Fora do manifesto</b>: das facetas da Anatomia (p. 5), estilo de interação, latência, formato, cardinalidade e granularidade não estão na p. 23. Elas ficam na ficha técnica do Copilot (<code>src/senseflow/facetas.py</code>). Término e erro (p. 19) vale para todo fluxo.</li>
+    <li><b>Opcionais, fora do exemplo</b>: <code>replaces</code> (o worker que esta versão substitui), <code>based_on</code> (o worker de que este partiu) e <code>reads</code> (os campos de API lidos, para o teste de contrato da curadoria).</li>
+  </ul>
+</template>
+
+<template id="d-particao" data-titulo="A partição da fila por chave" data-eyebrow="ordering = por_chave · Anatomia p. 15 e 23">
+  <p>O problema: o worker roda em várias réplicas, e todas pegam jobs da mesma fila. Os avisos do pedido 1001 chegam em ordem: pago, enviado, entregue. Se uma réplica pega "enviado" e outra pega "entregue", a segunda pode terminar primeiro, e o destino fica com "enviado" por último. A simulação viu exatamente isso.</p>
+  <p>A partição resolve sem abrir mão do paralelismo. O broker divide a fila em algumas subfilas, as partições, e cada partição tem um consumidor por vez. A chave decide a partição: um resumo de <code>tenant_id + key</code>, dividido pelo número de partições. A mesma chave cai sempre na mesma partição; chaves diferentes se espalham.</p>
+  <svg viewBox="0 0 520 262" role="img" aria-label="Cinco avisos de três chaves passam pelo broker e caem em três partições; os três avisos do pedido 1001 da Loja Azul ficam na mesma partição, em ordem" style="display:block;width:100%;height:auto;margin:12px 0 6px;font-family:var(--sans)">
+    <text class="rot" x="8" y="16">chegam, nesta ordem</text>
+    <text class="rot" x="300" y="16">partições</text>
+    <g class="mono s11">
+      <rect class="bx-acc" x="8" y="30" width="150" height="26" rx="5"/><text x="16" y="47">azul·1001 pago</text>
+      <rect class="bx-amb" x="8" y="66" width="150" height="26" rx="5"/><text x="16" y="83">azul·1002 pago</text>
+      <rect class="bx-acc" x="8" y="102" width="150" height="26" rx="5"/><text x="16" y="119">azul·1001 enviado</text>
+      <rect class="bx-ok" x="8" y="138" width="150" height="26" rx="5"/><text x="16" y="155">pet·1001 pago</text>
+      <rect class="bx-acc" x="8" y="174" width="150" height="26" rx="5"/><text x="16" y="191">azul·1001 entregue</text>
+    </g>
+    <g class="ln"><path d="M158 43 L182 105"/><path d="M158 79 L182 110"/><path d="M158 115 L182 115"/><path d="M158 151 L182 120"/><path d="M158 187 L182 125"/></g>
+    <rect class="bx" x="182" y="82" width="96" height="66" rx="6"/>
+    <text class="b s12" x="230" y="104" text-anchor="middle">broker</text>
+    <text class="mono s11 tm" x="230" y="121" text-anchor="middle">resumo(chave)</text>
+    <text class="mono s11 tm" x="230" y="137" text-anchor="middle">mod 3</text>
+    <g class="ln"><path d="M278 100 L300 47"/><path d="M278 115 L300 115"/><path d="M278 130 L300 183"/></g>
+    <g class="mono s11">
+      <rect class="bx-amb" x="300" y="30" width="162" height="34" rx="5"/><text x="308" y="51">P0  1002 pago</text>
+      <rect class="bx-acc" x="300" y="98" width="162" height="34" rx="5"/><text x="308" y="112">P1  1001 entregue ·</text><text x="308" y="126">    enviado · pago</text>
+      <rect class="bx-ok" x="300" y="166" width="162" height="34" rx="5"/><text x="308" y="187">P2  pet 1001 pago</text>
+    </g>
+    <g class="ln"><path d="M462 47 L474 47"/><path d="M462 115 L474 115"/><path d="M462 183 L474 183"/></g>
+    <g class="s11">
+      <rect class="bx" x="474" y="34" width="42" height="26" rx="5"/><text x="495" y="51" text-anchor="middle">rép. A</text>
+      <rect class="bx" x="474" y="102" width="42" height="26" rx="5"/><text x="495" y="119" text-anchor="middle">rép. B</text>
+      <rect class="bx" x="474" y="170" width="42" height="26" rx="5"/><text x="495" y="187" text-anchor="middle">rép. C</text>
+    </g>
+    <text class="s11 tm" x="8" y="232">Em P1 sai primeiro o da direita: pago, depois enviado, depois entregue.</text>
+    <text class="s11 tm" x="8" y="250">Números ilustrativos; "azul" e "pet" são sellers simulados.</text>
+  </svg>
+<pre>aviso                chave            partição
+azul  1001 pago      azul:1001    ->  P1
+azul  1002 pago      azul:1002    ->  P0
+azul  1001 enviado   azul:1001    ->  P1   (atrás do pago)
+pet   1001 pago      pet:1001     ->  P2
+azul  1001 entregue  azul:1001    ->  P1   (atrás do enviado)</pre>
+  <ul>
+    <li><b>Por que o seller na chave</b>: o pedido 1001 da Loja Azul e o 1001 do Mundo Pet são pedidos diferentes. Sem o <code>tenant_id</code>, os dois cairiam juntos e um esperaria o outro sem motivo.</li>
+    <li><b>Quantas partições</b>: um número fixo, escolhido pela vazão. Não é uma partição por pedido. Mais partições permitem mais réplicas trabalhando ao mesmo tempo, e uma réplica a mais que o número de partições fica parada.</li>
+    <li><b>O que não resolve</b>: a partição mantém a ordem em que os avisos chegaram ao broker. Se a origem já manda fora de ordem, é o Resequencer que acerta (p. 15). Por isso a p. 23 põe as duas peças juntas.</li>
+    <li><b>As alternativas da p. 15</b>: ordem nenhuma, com qualquer réplica pegando qualquer mensagem, que é o mais rápido. Ordem global, com um consumidor só, que "limita a vazão do fluxo inteiro". A partição fica no meio.</li>
+  </ul>
+  <h4>Como se faz, e o que a simulação faz</h4>
+  <p>No Kafka, a partição por chave vem pronta, e no Google Pub/Sub também, como chave de ordenação. No RabbitMQ, dá para montar com a exchange de hash consistente (um plugin que distribui pela chave entre N filas), cada fila com um consumidor ativo por vez. <span class="st st-confirmar">a mensageria está em aberto</span></p>
+  <p>A simulação roda com as duas. Com o <b>RabbitMQ</b>, o Hub monta a partição: o Status de Pedido tem 4 filas, o motor escolhe a de cada aviso pelo resumo de <code>seller:pedido</code>, e cada fila anda um job por vez. Com o <b>Pub/Sub</b>, o motor publica com a chave <code>seller:pedido</code>, e o Status roda com 2 réplicas e a ordem por pedido. Um detalhe apareceu ao rodar: o Pub/Sub entrega em ordem, mas não espera a confirmação para mandar a seguinte da mesma chave, e o nó de entrada do worker precisa segurá-la. <span class="st st-sim">simulação</span></p>
+</template>
+
+<template id="d-varredura" data-titulo="O que a varredura publica" data-eyebrow="python -m hub_engine.demo">
+<pre>capacidade  estoque-e-preco  bling -&gt; flexy  bling-estoque  v1.0.0  todos
+capacidade  pedido           flexy -&gt; bling  bling-pedido   v1.0.0  todos
+capacidade  pedido           flexy -&gt; omie   omie-pedido    v1.0.0  todos
+capacidade  pedido           flexy -&gt; tiny   tiny-pedido    v1.0.0  todos
+INVALIDO    tiny-estoque: manifesto desatualizado:
+            o flows.json mudou depois dele
+SEM MANIFESTO  omie-estoque-legado: instalado, mas
+               invisivel ao roteamento
+LACUNA      t-casa-verde usa notas-fiscais tiny -&gt; flexy:
+            nenhum worker instalado
+LACUNA      t-mundo-pet usa estoque-e-preco omie -&gt; flexy:
+            nenhum worker instalado
+LACUNA      t-mundo-pet usa pedido flexy -&gt; omie: omie-pedido
+            nao declara delivery=effectively_once
+CONFIGURACAO  t-ponto-novo para bling-pedido:
+              faltam ['execParams.deposito']
+combinacoes do catalogo sem worker: 8</pre>
+  <p>Antes de registrar, a varredura passa o linter em cada worker; o reprovado fica entre os inválidos. Quando roda <span class="st st-confirmar">a confirmar</span>: no pipeline, depois de publicar a imagem de um worker, e periodicamente. Cada lacuna de demanda emite <code>hub.lacuna_detectada</code>.</p>
+  <p class="rode"><b>Rode:</b> <code>python -m hub_engine.demo</code> (com <code>src</code> no <code>PYTHONPATH</code>)</p>
+</template>
+
+<template id="d-linter" data-titulo="O linter: o manifesto diz a verdade?" data-eyebrow="src/hub_engine/lint.py">
+  <p>O manifesto diz o que o worker faz, e o registro confia nele. O linter lê o fluxo do worker (o <code>flows.json</code>) e confere se ele faz mesmo o que o manifesto declara. Roda antes do deploy, e de novo na varredura: o worker reprovado fica fora do registro. <span class="st st-proposta">proposta</span> roda no estudo.</p>
+  <p>Exemplo: o <code>omie-pedido-v2</code> muda só o manifesto e passa a declarar que não duplica pedido (<code>effectively_once</code>). O esquema, o catálogo e o hash aceitam. O linter lê o fluxo e reprova:</p>
+<pre>omie-pedido-v2: 5 violacao(oes) em 5 regras
+  W105 le credentials.omie.APP_SECRET sem declarar
+  W105 declara credentials.flexy.STORE_TOKEN e nao le
+  W106 declara delivery=effectively_once, mas o fluxo
+       nao tem chave_de_idempotencia, idempotencia
+  W203 'nucleo (simulado)' usa estado sem o seller
+       na chave: 'vistos'
+  W204 'nucleo (simulado)' escreve credencial em log</pre>
+  <div class="tbl"><table>
+    <thead><tr><th>Regra</th><th>O que dá errado sem ela</th></tr></thead>
+    <tbody>
+      <tr><td>lê o que declara</td><td>o job chega sem o que o worker lê</td></tr>
+      <tr><td>entrega declarada</td><td>o Hub entrega pedido a um worker que o duplica</td></tr>
+      <tr><td>fila do manifesto</td><td>o Hub publica numa fila e o worker ouve outra</td></tr>
+      <tr><td>estado por seller</td><td>o worker mistura a memória de um seller com a de outro</td></tr>
+      <tr><td>credencial protegida</td><td>o token de um seller fica no log</td></tr>
+    </tbody>
+  </table></div>
+  <p>Limite: o linter prova que a peça está no fluxo, e não que ela funciona. Um teste com um job de exemplo complementaria.</p>
+  <p class="rode"><b>Rode:</b> <code>python -m hub_engine.lint src/hub_engine/simulado/novos/omie-pedido-v2</code> (com <code>src</code> no <code>PYTHONPATH</code>)</p>
+</template>
+
+<template id="d-lacunas" data-titulo="Lacunas e quem as usa" data-eyebrow="A varredura publica">
+  <div class="tbl"><table>
+    <thead><tr><th>O quê</th><th>Na demonstração</th><th>Quem usa</th></tr></thead>
+    <tbody>
+      <tr><td><b>inválidos</b></td><td><code>tiny-estoque</code>: manifesto desatualizado; <code>bling-pedido-invertido</code>: A e B trocados; <code>omie-pedido-v2</code>: reprovado no linter</td><td>quem fez o deploy: o pipeline para</td></tr>
+      <tr><td><b>sem manifesto</b></td><td><code>omie-estoque-legado</code>: instalado, mas invisível</td><td>P&amp;D: o que falta migrar</td></tr>
+      <tr><td><b>lacuna de demanda</b></td><td>Casa Verde usa Notas Fiscais Tiny → Flexy e não há worker</td><td>operação, antes do primeiro pedido falhar</td></tr>
+      <tr><td><b>lacuna de configuração</b></td><td>Ponto Novo não tem o parâmetro <code>deposito</code></td><td>suporte ao seller</td></tr>
+      <tr><td><b>lacuna de catálogo</b></td><td>8 das 12 combinações sem worker</td><td>Copilot: o que gerar a seguir</td></tr>
+    </tbody>
+  </table></div>
+  <p>Os sellers são <span class="st st-sim">simulado</span>.</p>
+</template>
+
+<template id="d-registro" data-titulo="Como o registro decide" data-eyebrow="Parte 3 · service discovery">
+  <ol>
+    <li><b>Chave</b> (fluxo, A, B): um worker por combinação, para todos os sellers dela.</li>
+    <li><b>Canary</b>, a única exceção: a versão nova com lista de sellers vence a de <code>"*"</code> só para eles.</li>
+    <li><b>Conflito</b> é "o mesmo job selecionaria os dois". Workers separados pela lista de sellers não conflitam.</li>
+    <li><b>Exigências</b> vêm do catálogo: Pedido e Notas Fiscais exigem <code>delivery = effectively_once</code> (Anatomia, p. 14: "exigido para pedido e nota"); Status de Pedido exige ordem por chave ("faturado" não chega antes de "aprovado", Guia). Melhor fila de erro que pedido duplicado.</li>
+    <li><b>Ordem por chave</b> é partição da fila por seller e pedido (Anatomia, p. 23): mensagens do mesmo pedido em sequência, pedidos diferentes em paralelo, mesmo com várias réplicas.</li>
+    <li><b>Contrato</b>: job de outra versão maior não vai para o worker.</li>
+    <li><b>Promoção</b> com <code>replaces</code>: troca numa operação só, entre workers da mesma combinação.</li>
+    <li><b>Workspace como fonte de verdade</b>: o que sai dele é desativado; o que volta é registrado de novo.</li>
+  </ol>
+<pre>Na proposta, RoteadorPorManifesto: flow = pedido,
+de flexy para bling, seller t-loja-azul
+  -&gt; fila workers.pedido.flexy-bling.v1, worker bling-pedido v1.0.0
+  o fluxo exige {'delivery': 'effectively_once'};
+  o manifesto declara delivery = effectively_once</pre>
+  <p class="rode"><b>Rode:</b> <code>python -m hub_engine.passo_a_passo 5</code></p>
+</template>
+
+<template id="d-job" data-titulo="O job v1" data-eyebrow="src/hub_engine/contratos/job-v1.schema.json">
+  <p>O que o Hub Engine publica na fila do worker, para o pedido FX-1:</p>
+<pre>{
+  "job_contract": "1",
+  "transaction_id": "tx-0001",
+  "tenant_id": "t-loja-azul",
+  "object_key": "FX-1",
+  "flow": "pedido", "system_a": "flexy", "system_b": "bling",
+  "erp_id": "bling", "operation": "order.create",
+  "credentials": {
+    "flexy": {"STORE_TOKEN": "&lt;token simulado da loja 1001&gt;"},
+    "bling": {"ACCESS_TOKEN": "&lt;token simulado Bling de t-loja-azul&gt;"}
+  },
+  "execParams": {"loja_id": "1001", "deposito": "geral"},
+  "trigger": {"kind": "webhook", "source": "flexy",
+              "event": "order.created",
+              "payload": {"store_id": "1001", "delivery_id": "d-77",
+                          "data": {"order_id": "FX-1"}, ...}},
+  "attempt": 1
+}
+jb.validar(job) -&gt; []   (dentro do contrato v1)</pre>
+  <h4>Regras que o esquema sozinho não diz</h4>
+  <ul>
+    <li><b>Entrega pelo menos uma vez</b>: o worker confirma só depois de processar. Erro técnico (sem resposta, 429, 5xx) repete com backoff e, esgotado, vai para a dead letter; erro de dado (400) vai para mensagens inválidas, sem repetir (Anatomia, p. 19).</li>
+    <li><b>Duplicar, sim; perder, não</b>: nenhuma peça confirma a mensagem de origem antes de a mensageria confirmar a de destino. O ingresso só responde 202 depois de o evento estar guardado na fila; o motor só confirma a entrada depois de o job estar na fila do worker; o worker só confirma o job depois de a espera, a dead letter ou as inválidas o guardarem. A entrega repetida tem marca em dois estados: <i>pendente</i> até a fila confirmar e <i>confirmada</i> depois. O reenvio que chega no meio recebe 503 e volta mais tarde, em vez de "repetida". No pior caso, o job sai duas vezes, e a idempotência resolve. <span class="st st-proposta">proposta</span> roda na simulação (seção 3).</li>
+    <li><b>Idempotência pela <code>object_key</code></b>, o id do pedido: dois avisos do mesmo pedido têm <code>transaction_id</code> diferentes e a mesma chave. O worker guarda os pedidos já processados e manda o id ao Bling como número do pedido da loja, a <i>Idempotency key</i> do Guia. <span class="st st-confirmar">cada ERP recusa o repetido?</span></li>
+    <li><b><code>transaction_id</code></b> é o execution ID da Anatomia: segue o pedido em todas as etapas e descarta só a reentrega do mesmo job; o replay usa o mesmo id com <code>attempt</code> + 1.</li>
+    <li><b>Credencial usada e descartada</b>: nunca no estado do worker, nunca em log, nunca na fila de erro. No replay, o Hub põe de novo a credencial atual. Por isso quem renova o token é o Hub, antes de montar o job.</li>
+    <li><b>Versão</b>: campo novo opcional não muda <code>job_contract</code>; remover ou mudar o sentido de um campo, muda.</li>
+  </ul>
+  <p class="rode"><b>Rode:</b> <code>python -m hub_engine.passo_a_passo 4</code></p>
+</template>
+
+<template id="d-nodered" data-titulo="Os fluxos no Node-RED" data-eyebrow="simulacao/workspace/&lt;worker&gt;/flows.json">
+  <p>Não há um Node-RED com todos os fluxos: cada worker roda no seu, com porta própria. Por isso http://localhost:31880 mostra sempre o mesmo fluxo, o Pedido da Flexy para o Bling. Para ver outro, troque a porta.</p>
+  <p class="rode">Os endereços só abrem na máquina com a simulação no ar (<code>python simulacao/sim.py subir</code>; a lista também sai em <code>sim.py enderecos</code>). O editor abre num dos pods do worker, e o painel de <i>debug</i> (o inseto, à direita) mostra só as execuções desse pod. O fluxo vem de <code>simulacao/workspace/&lt;worker&gt;/flows.json</code>, gerado por <code>simulacao/workers/</code>: uma mudança feita no editor some quando o pod reinicia. Os comandos abaixo são <code>python simulacao/sim.py …</code>.</p>
+  <h4>Pedido, da Flexy para o ERP</h4>
+  <div class="tbl"><table>
+    <thead><tr><th>Fluxo · como disparar</th><th>Editor</th></tr></thead>
+    <tbody>
+      <tr><td><b>Pedido no Bling</b> · <code>bling-pedido</code><br><code>pedido</code></td><td><code>:31880</code></td></tr>
+      <tr><td><b>Pedido no Tiny</b> · <code>tiny-pedido</code><br><code>pedido --loja 1003</code></td><td><code>:31881</code></td></tr>
+      <tr><td><b>Pedido no Omie</b> · <code>omie-pedido</code><br><code>instalar omie-pedido</code>, depois <code>pedido --loja 1004</code></td><td><code>:31882</code></td></tr>
+      <tr><td><b>Pedido no Bling, canary 2.0.0</b> · <code>bling-pedido-v2</code><br><code>instalar bling-pedido-v2</code>, depois <code>pedido --loja 1001</code></td><td><code>:31886</code></td></tr>
+      <tr><td><b>Cancelamento de pedido</b> · <code>bling-cancelamento</code><br><code>pedido --loja 1002</code>, depois <code>pedido --loja 1002 --cenario cancelamento</code></td><td><code>:31890</code></td></tr>
+      <tr><td><b>Pedido com vale-presente</b> (saga) · <code>bling-vale</code><br><code>pedido --loja 1002 --cenario vale</code></td><td><code>:31896</code></td></tr>
+      <tr><td><b>Envio de pacotes</b> (aggregator) · <code>bling-envio</code><br>no <code>verificar</code></td><td><code>:31895</code></td></tr>
+      <tr><td><b>Pedido da Vitrine</b>, conector de entrada · <code>vitrine-entrada</code><br>no <code>verificar</code> (hub-and-spoke)</td><td><code>:31898</code></td></tr>
+      <tr><td><b>Pedido padrão no Bling</b>, conector de saída · <code>bling-saida</code><br>no <code>verificar</code> (hub-and-spoke)</td><td><code>:31899</code></td></tr>
+    </tbody>
+  </table></div>
+  <h4>Do ERP para a Flexy</h4>
+  <div class="tbl"><table>
+    <thead><tr><th>Fluxo · como disparar</th><th>Editor</th></tr></thead>
+    <tbody>
+      <tr><td><b>Estoque e preço</b> · <code>bling-estoque</code><br><code>erp estoque</code> (ou <code>--cenario rajada</code>)</td><td><code>:31883</code></td></tr>
+      <tr><td><b>Estoque e preço para a Vitrine</b> · <code>bling-estoque-vitrine</code><br><code>erp estoque</code> (a Loja Azul vende também na Vitrine)</td><td><code>:31887</code></td></tr>
+      <tr><td><b>Status de pedido</b> · <code>bling-status</code><br><code>erp status</code></td><td><code>:31884</code></td></tr>
+      <tr><td><b>Notas fiscais</b> (consulta periódica) · <code>tiny-notas</code><br><code>erp nota</code>, depois <code>agenda</code></td><td><code>:31885</code></td></tr>
+      <tr><td><b>Catálogo de produtos</b> (carga completa) · <code>tiny-catalogo</code><br><code>erp catalogo</code>, depois <code>disparar catalogo-de-produtos --loja 1003</code></td><td><code>:31889</code></td></tr>
+      <tr><td><b>Produtos por CDC</b> (log do banco) · <code>omie-cdc</code><br><code>disparar produtos-por-cdc --loja 1004</code></td><td><code>:31897</code></td></tr>
+      <tr><td><b>Preços por arquivo</b> (SFTP) · <code>sftp-precos</code><br><code>disparar precos-por-arquivo --loja 1002</code></td><td><code>:31894</code></td></tr>
+      <tr><td><b>Reconciliação de estoque</b> · <code>bling-reconciliacao</code><br><code>disparar reconciliacao-de-estoque --loja 1001</code></td><td><code>:31893</code></td></tr>
+    </tbody>
+  </table></div>
+  <h4>Da Flexy, fora o pedido</h4>
+  <div class="tbl"><table>
+    <thead><tr><th>Fluxo · como disparar</th><th>Editor</th></tr></thead>
+    <tbody>
+      <tr><td><b>Consulta de estoque</b> do checkout (request-reply) · <code>bling-consulta</code><br><code>consulta</code></td><td><code>:31888</code></td></tr>
+      <tr><td><b>Preço editado na loja</b>, de volta ao Tiny · <code>tiny-preco</code><br>no <code>verificar</code></td><td><code>:31891</code></td></tr>
+      <tr><td><b>Visitas dos anúncios</b> (telemetria) · <code>flexy-visitas</code><br>no <code>verificar</code></td><td><code>:31892</code></td></tr>
+    </tbody>
+  </table></div>
+  <p class="rode">Lojas: 1001 Loja Azul e 1002 Bazar Sol (Bling), 1003 Casa Verde (Tiny), 1004 Mundo Pet (Omie). <code>omie-pedido</code> e <code>bling-pedido-v2</code> não sobem com o <code>subir</code>: entram com <code>instalar</code>, e o editor só abre depois disso. Os fluxos marcados "no <code>verificar</code>" não têm comando próprio: rodam dentro de <code>python simulacao/sim.py verificar</code>, que confere todos os cenários.</p>
+</template>
+
+<script>
+(function(){
+  /* painel de detalhe */
+  var painel=document.getElementById('painel'), veu=document.getElementById('veu');
+  var corpo=document.getElementById('painel-corpo'), titulo=document.getElementById('painel-titulo');
+  var eyebrow=document.getElementById('painel-eyebrow'), origem=null;
+  function abrir(id, el){
+    var t=document.getElementById('d-'+id); if(!t) return;
+    titulo.textContent=t.getAttribute('data-titulo')||'';
+    eyebrow.textContent=t.getAttribute('data-eyebrow')||'Exemplo';
+    corpo.replaceChildren(t.content.cloneNode(true));
+    if(painel.hidden){ origem=el; }
+    painel.hidden=false; veu.hidden=false; painel.scrollTop=0;
+    document.getElementById('painel-fechar').focus();
+  }
+  function fechar(){
+    painel.hidden=true; veu.hidden=true;
+    if(origem&&origem.focus){ origem.focus(); } origem=null;
+  }
+  document.getElementById('painel-fechar').addEventListener('click',fechar);
+  veu.addEventListener('click',fechar);
+  document.addEventListener('click',function(e){
+    var a=e.target.closest('[data-d]');
+    if(a){ e.preventDefault(); abrir(a.getAttribute('data-d'),a); return; }
+    var ir=e.target.closest('[data-ir]');
+    if(ir){ var alvo=document.getElementById(ir.getAttribute('data-ir')); if(alvo) alvo.scrollIntoView({behavior:'smooth'}); }
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'&&!painel.hidden){ fechar(); return; }
+    var g=e.target.closest&&e.target.closest('svg [data-d], svg [data-ir], svg [data-passo]');
+    if(g&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); g.dispatchEvent(new MouseEvent('click',{bubbles:true})); }
+  });
+
+  /* trilha */
+  var links=[].slice.call(document.querySelectorAll('nav.trilha a'));
+  if('IntersectionObserver' in window){
+    var obs=new IntersectionObserver(function(ents){
+      ents.forEach(function(en){
+        if(en.isIntersecting){
+          links.forEach(function(l){ l.classList.toggle('on', l.getAttribute('href')==='#'+en.target.id); });
+        }
+      });
+    },{rootMargin:'-45% 0px -50% 0px'});
+    document.querySelectorAll('section.tela').forEach(function(s){ obs.observe(s); });
+  }
+
+  function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  var ETQ={hoje:'<span class="st st-hoje">existe hoje</span>',proposta:'<span class="st st-proposta">proposta</span>',sim:'<span class="st st-sim">simulado</span>',construir:'<span class="st st-construir">construir</span>'};
+
+  /* passo a passo do FX-1 (mesma numeração de hub_engine.passo_a_passo) */
+  var PASSOS=[
+    {t:'A Flexy avisa',l1:'A Flexy',l2:'avisa',l3:'webhook',etq:'sim',
+     p:'A Flexy manda ao Hub só o aviso, assinado com o segredo da loja 1001. O aviso não traz o pedido, só o número.',
+     o:'POST /webhooks/flexy\nX-Flexy-Signature: sha256=a7f4d0cbde744f2b…\n{"store_id": "1001", "event": "order.created",\n "delivery_id": "d-77", "data": {"order_id": "FX-1"}}'},
+    {t:'O ingresso do Hub confere',l1:'O ingresso',l2:'confere',l3:'assinatura',etq:'hoje',
+     p:'O ingresso refaz a conta da assinatura e põe o aviso no formato do Hub. Assinatura inválida dá 401; entrega repetida é confirmada e ignorada.',
+     o:'ingresso.receber(...) -> status = 202   motivo = None\n{"origem": "flexy", "conta": "1001",\n "evento": "order.created", "entrega": "flexy:d-77", ...}'},
+    {t:'De quem é o pedido?',l1:'De quem é',l2:'o pedido?',l3:'seller e fluxo',etq:'hoje',
+     p:'Quatro perguntas ao catálogo e ao Admin DB: que fluxo é este evento, de quem é a loja, o seller usa o fluxo, de onde para onde.',
+     o:'catalogo.fluxo_do_evento("flexy", "order.created")  -> pedido\nadmin.tenant_por_conta("flexy", "1001")            -> t-loja-azul\nadmin.fluxo("t-loja-azul", "pedido")\n  -> {"ativo": True, "execParams": {"loja_id": "1001", "deposito": "geral"}}\ncatalogo.sistemas_do_seller("pedido", ...)        -> ("flexy", "bling")'},
+    {t:'O Hub monta o job',l1:'O Hub monta',l2:'o job',l3:'job v1',etq:'proposta',
+     p:'O job v1 leva fluxo, sistemas A e B do catálogo, uma credencial por sistema, os parâmetros do seller, o conteúdo do evento e a chave do pedido, que o Hub tira do aviso pelo catálogo: é por ela que o worker não cria o mesmo pedido duas vezes.',
+     o:'{"job_contract": "1", "transaction_id": "tx-0001",\n "tenant_id": "t-loja-azul", "object_key": "FX-1",\n "flow": "pedido", "system_a": "flexy", "system_b": "bling",\n "credentials": {"flexy": {...}, "bling": {...}},\n "execParams": {"loja_id": "1001", "deposito": "geral"},\n "trigger": {"kind": "webhook", ...}, "attempt": 1}\njb.validar(job) -> []'},
+    {t:'Qual fila recebe o job?',l1:'Qual fila',l2:'recebe?',l3:'registro',etq:'proposta',
+     p:'Hoje, a fila é a do ERP. Na proposta, o registro acha o worker da combinação, confere a exigência do fluxo e se o job traz o que o worker lê.',
+     o:'Hoje, RoteadorFixo           -> fila canal.bling\nProposta, RoteadorPorManifesto\n  -> fila workers.pedido.flexy-bling.v1, worker bling-pedido v1.0.0\n  o fluxo exige delivery = effectively_once; o manifesto declara\nmf.faltam_no_job(manifesto, job)  -> []\no mesmo job sem "deposito"       -> ["execParams.deposito"]'},
+    {t:'A fila guarda o job',l1:'A fila',l2:'guarda',l3:'fila do worker',etq:['hoje','proposta'],
+     p:'A fila existe hoje (a do ERP). Na proposta, o job vai para a fila do worker; se falta algo, vai para a fila de erro com o motivo e o tipo do erro, e sem a credencial, para o replay.',
+     o:'hub.processar() -> {"transaction_id": "tx-0001",\n  "destino": "workers.pedido.flexy-bling.v1", "worker_id": "bling-pedido"}\nhub.processar() -> {"transaction_id": "tx-0002", "destino": "hub.erros",\n  "tipo": "configuracao",\n  "motivo": "configuracao incompleta do seller para bling-pedido"}\nfila de erro: job.credentials: ***'},
+    {t:'O worker faz o trabalho',l1:'O worker',l2:'trabalha',l3:'Node-RED',etq:['hoje','proposta'],
+     p:'O worker Node-RED existe hoje; consumir o job v1 e atender vários sellers é a proposta. Ele consome o job, busca o pedido completo na Flexy com o token da loja e cria o pedido no Bling com o token do seller. O estudo não executa worker: mostra o que ele recebe.',
+     o:'consome tx-0001 da fila workers.pedido.flexy-bling.v1\n  parte 02: STORE_TOKEN da Flexy, para buscar o pedido FX-1\n  parte 05: execParams {"loja_id": "1001", "deposito": "geral"}\n  parte 06: ACCESS_TOKEN do Bling, para criar o pedido'},
+    {t:'O rastro que fica',l1:'O rastro',l2:'fica',l3:'eventos',etq:'proposta',
+     p:'Cada etapa emite um evento com o mesmo transaction_id. É por ele que o suporte segue o FX-1, e é ele que liga o broker à esteira de qualidade.',
+     o:'{"evento": "hub.webhook_recebido", "transaction_id": "tx-0001", ...}\n{"evento": "hub.envelope_publicado", "transaction_id": "tx-0001",\n "tenant_id": "t-loja-azul", "worker_id": "bling-pedido",\n "fila": "workers.pedido.flexy-bling.v1"}'}
+  ];
+  var trilho=document.getElementById('trilho'), atual=0;
+  (function(){
+    var h='';
+    PASSOS.forEach(function(s,i){
+      var x=11+i*119;
+      h+='<g class="est" data-passo="'+i+'" tabindex="0" role="button" aria-label="Passo '+(i+1)+': '+s.t+'">';
+      h+='<rect class="bx" x="'+x+'" y="44" width="105" height="84" rx="6"/>';
+      h+='<text class="mono ta b s13" x="'+(x+10)+'" y="64">'+(i+1)+'</text>';
+      h+='<text class="b s13" x="'+(x+10)+'" y="84">'+s.l1+'</text>';
+      h+='<text class="b s13" x="'+(x+10)+'" y="101">'+s.l2+'</text>';
+      h+='<text class="tm s11" x="'+(x+10)+'" y="119">'+s.l3+'</text>';
+      h+='</g>';
+      if(i<PASSOS.length-1) h+='<line class="ln" x1="'+(x+106)+'" y1="86" x2="'+(x+117)+'" y2="86" marker-end="url(#b2)"/>';
+    });
+    trilho.insertAdjacentHTML('beforeend',h);
+  })();
+  var caixa=document.getElementById('passo');
+  function mostrar(i){
+    atual=i; var s=PASSOS[i];
+    trilho.querySelectorAll('.est').forEach(function(g){ g.classList.toggle('on', +g.getAttribute('data-passo')===i); });
+    var etiquetas=(Array.isArray(s.etq)?s.etq:[s.etq]).map(function(k){ return ETQ[k]; }).join(' ');
+    caixa.innerHTML='<div class="passo-cab"><h3><span class="n">Passo '+(i+1)+'</span>'+s.t+' '+etiquetas+'</h3>'+
+      '<div class="navp"><button type="button" id="p-ant"'+(i===0?' disabled':'')+'>Anterior</button><button type="button" id="p-prox"'+(i===PASSOS.length-1?' disabled':'')+'>Próximo</button></div></div>'+
+      '<p>'+s.p+'</p><pre>'+esc(s.o)+'</pre>'+
+      '<p class="rode"><b>Rode:</b> <code>python -m hub_engine.passo_a_passo '+(i+1)+'</code> (com <code>src</code> no <code>PYTHONPATH</code>)</p>';
+    document.getElementById('p-ant').onclick=function(){ if(atual>0) mostrar(atual-1); };
+    document.getElementById('p-prox').onclick=function(){ if(atual<PASSOS.length-1) mostrar(atual+1); };
+  }
+  trilho.addEventListener('click',function(e){ var g=e.target.closest('[data-passo]'); if(g) mostrar(+g.getAttribute('data-passo')); });
+  mostrar(0);
+
+})();
+</script>
+<script>
+/* abre o grupo da pergunta clicada no roteiro */
+document.addEventListener('click',function(e){
+  var a=e.target.closest('.roteiro a[href^="#q-"]'); if(!a) return;
+  var t=document.getElementById(a.getAttribute('href').slice(1)); if(!t) return;
+  var d=t.closest('details'); if(d) d.open=true;
+});
+</script>
